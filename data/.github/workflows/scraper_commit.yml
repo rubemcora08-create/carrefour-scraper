@@ -1,0 +1,46 @@
+name: Scraper Carrefour (commit)
+
+on:
+  schedule:
+    - cron: "0 9 * * *"   # roda diariamente às 06:00 em São Paulo (09:00 UTC)
+  workflow_dispatch:
+
+jobs:
+  run-scraper-and-commit:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Google Chrome
+        uses: browser-actions/setup-chrome@v1
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run scraper
+        run: |
+          python scraper_carrefour.py
+
+      - name: Commit and push updated Excel(s)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/*.xlsx || true
+          if git diff --cached --quiet; then
+            echo "Sem mudanças para commitar."
+          else
+            git commit -m "Atualiza planilhas mensais (run $(date -u +'%Y-%m-%d'))"
+            git push
+          fi
